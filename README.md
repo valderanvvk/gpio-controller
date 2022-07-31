@@ -52,7 +52,7 @@ Node.js versions 12+
 GpioController дает возможность работать с отдельными пинами, как инстансом класса Gpio данной библиотеки.
 Библиотека хорошо документирована, предлагаем Вам ознакомиться с документацией по её использованию.
 
-##Установка
+## Установка
 
 ```
 npm i gpio-controller
@@ -79,7 +79,7 @@ const gpio = new GpioController({ mock });
 
 - mock - определяет необходимость использования библиотеки onoff или GpioMock. Если разработка ведется на платформе не имеющей GPIO, mock:true позволяет тестировать функционал эмулируя работы библиотеки onoff и настраивать необходимое поведение.
 
-####Работа со светодиодами или подаем напряжение на пин
+#### Работа со светодиодами или подаем напряжение на пин
 Подключим светодиод на GPIO 23 по схеме(вы можете использовать другую схему подключения или другие устройства, например мультиметр, для проверки подачи напряжения на пин):
 ![Схема GPIO](./doc/images/rpi_led.jpg)
 Сделаем так, чтоб светодиод засветился
@@ -141,7 +141,7 @@ gpio.watchPIN(callback, BUTTON);
 ```
 при нажатии кнопки происходит вызов callback-функции в которой при помощи toggle меняется состояние пина со светодиодом. 
 
-####Чтение/Изменение состояния пина
+#### Чтение/Изменение состояния пина
 Для чтения и изменения состояния используются методы
 ``` Typescript
 // Чтение состояния, возврат Promise 0 или 1
@@ -289,4 +289,56 @@ gpio.watchGroup(groupButtons, callback);
 при edge: both вызов функции происходит два раза возвращая 0 и 1 
 
 #### GpioMock мокаем GPIO при тестировании
+GpioMock позволяет работать с библиотекой на платформе не поддерживающей GPIO.
+Статическое свойство GPIOACCESS позволяет определить возможность работы с GPIO
+```Typescript
+import { GpioController } from 'gpio-controller';
+
+// Если нет доступа к GPIO используем GpioMock
+const mock = GpioController.GPIOACCESS ? false : true;
+const gpio = new GpioController({ mock });
+```
+свойво mock передаваемое в конструктор определяет использовать GpioMock или нет.
+
+GpioMock дает полный доступ к свойствам и методам, позволяя отслеживать любые изменения, и подходит больше для тестирования функционала. 
+**Пример 1**: эмуляция нажатия кнопки для пина 4 и проверка вызова callback
+```Typescript
+import { Button, GpioController, GpioMock } from 'gpio-controller';
+import { ValueCallback } from 'gpio-controller/gpio/gpio.interface';
+
+const gpio = new GpioController({ mock: true });
+
+const callback: ValueCallback = (err, value) => {
+	if (!err) {
+		if (value == 0) console.log('Button pressed');
+		if (value == 1) console.log('Button released');
+	}
+};
+
+gpio.setPIN({ gpio: 4, direction: 'in', edge: 'both' });
+gpio.watchPIN(callback, 4);
+const pin = gpio.getPIN(4);
+
+const button = new Button(pin as GpioMock);
+button.push();
+```
+**Пример 2** - отслеживаем изменение состояния пина прямым доступом к состоянию: 
+```Typescript
+import { GpioController, GpioMock } from 'gpio-controller';
+
+const gpio = new GpioController({ mock: true });
+gpio.setPIN({ gpio: 12, direction: 'out' });
+
+const pin: GpioMock = gpio.getPIN(12) as GpioMock;
+
+console.log('pin value before write:', pin._value);
+
+gpio.writeSignal(12, 1).then(value => {
+	console.log('pin value after write:', pin._value);
+})
+```
+
+В тестах можно найти все примеры работы с данным классом
+
 #### API
+**в работе**
